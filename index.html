@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phân Loại Hợp Chất Hóa Học - Hữu Cơ &amp; Vô Cơ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        sub {
+            font-size: 0.72em;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+            bottom: -0.25em;
+        }
+
+        .chem-card {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 14px;
+            padding: 9px 14px;
+            min-width: 112px;
+            cursor: grab;
+            touch-action: none;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+            transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .chem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+            border-color: #6366f1;
+        }
+
+        .chem-card.selected {
+            border-color: #4f46e5;
+            background: #eef2ff;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.28);
+            transform: translateY(-3px) scale(1.03);
+        }
+
+        .chem-card.dragging {
+            opacity: 0.35;
+        }
+
+        .chem-card.correct {
+            border-color: #10b981;
+            background: #ecfdf5;
+            cursor: pointer;
+        }
+
+        .chem-card.incorrect {
+            border-color: #f43f5e;
+            background: #fff1f2;
+            cursor: pointer;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 9999px;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22);
+        }
+
+        .basket-zone {
+            transition: all 0.2s ease;
+        }
+
+        .basket-organic.drag-over,
+        .basket-organic.tap-ready {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22);
+            transform: translateY(-2px);
+        }
+
+        .basket-inorganic.drag-over,
+        .basket-inorganic.tap-ready {
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.22);
+            transform: translateY(-2px);
+        }
+
+        .tray-zone.drag-over {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+        }
+
+        .touch-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%) scale(1.08);
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.28);
+            border-color: #4f46e5;
+            background: #ffffff;
+            opacity: 0.96;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- =========================================================================
+         MÀN HÌNH 1: CỔNG ĐĂNG NHẬP HỌC SINH (TỐI GIẢN TUYỆT ĐỐI)
+         ========================================================================= -->
+    <div id="view-student-gate" class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6">
+        <div class="max-w-5xl w-full mx-auto flex justify-between items-center">
+            <span id="db-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-emerald-300 border border-white/15">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Firebase Realtime DB: hoa11c2
+            </span>
+            <button type="button" id="btn-switch-teacher" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-slate-300 border border-white/15 hover:bg-white/20 hover:text-white transition">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Giáo viên</span>
+            </button>
+        </div>
+
+        <div class="w-full max-w-md mx-auto my-auto">
+            <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-6 text-white text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center mx-auto mb-3 shadow-inner">
+                        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 3h6"/><path d="M10 3v6.5L4.5 18A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M8.5 14h7"/>
+                        </svg>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-black tracking-tight">Phân Loại Hợp Chất Hóa Học</h1>
+                    <p class="text-xs sm:text-sm text-indigo-100 mt-1">Hợp chất Hữu cơ &amp; Hợp chất Vô cơ</p>
+                </div>
+
+                <form id="form-student-enter" class="p-6 space-y-4">
+                    <div>
+                        <label for="stu-input-name" class="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Họ và tên <span class="text-rose-500">*</span></label>
+                        <input type="text" id="stu-input-name" required maxlength="40" placeholder="Nhập họ và tên của bạn..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-600 transition">
+                    </div>
+
+                    <div>
+                        <label for="stu-input-class" class="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Lớp <span class="text-rose-500">*</span></label>
+                        <input type="text" id="stu-input-class" required maxlength="20" placeholder="Ví dụ: 11C2, 9A1..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-600 transition">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label for="stu-input-room" class="block text-xs font-extrabold uppercase tracking-wider text-slate-600">Mã phòng <span class="text-rose-500">*</span></label>
+                            <span id="stu-room-locked-badge" class="hidden text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Đã khóa theo link mời</span>
+                        </div>
+                        <input type="text" id="stu-input-room" required maxlength="12" placeholder="Nhập mã phòng giáo viên cấp..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 text-base font-mono-code font-extrabold uppercase tracking-widest text-indigo-700 focus:outline-none focus:border-indigo-600 transition">
+                    </div>
+
+                    <p id="stu-gate-error" class="hidden text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2"></p>
+
+                    <button type="submit" id="btn-stu-start" class="w-full py-3.5 px-5 rounded-2xl text-sm sm:text-base font-black bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200 hover:from-indigo-700 hover:to-violet-700 active:scale-[0.99] transition">
+                        VÀO THI ĐẤU
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="h-4"></div>
+    </div>
+
+    <!-- =========================================================================
+         MÀN HÌNH 2: BẢNG ĐIỀU KHIỂN GIÁO VIÊN / NGƯỜI TẠO PHÒNG
+         ========================================================================= -->
+    <div id="view-teacher-dashboard" class="hidden min-h-screen flex-col bg-slate-100">
+        <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-sm">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-base sm:text-lg font-extrabold">Bảng Điều Khiển Giáo Viên</h1>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-400/30">Firebase RTDB</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Lưu phòng &amp; bài tập vào <code>rooms</code> • Lưu điểm học sinh vào <code>hocsinh</code></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-teacher-test-play" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition">
+                        Chơi Thử Đề Này
+                    </button>
+                    <button type="button" id="btn-teacher-to-student" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition">
+                        Về Màn Hình Học Sinh
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 space-y-5 flex-1">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <!-- Cột trái (7 phần): Thiết lập đề & Lưu phòng lên Firebase -->
+                <section class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900">1. Thiết Lập Bài Tập &amp; Tạo Phòng (<code>rooms</code>)</h2>
+                            <p class="text-xs text-slate-500">Bấm Lưu Phòng để ghi mã phòng và bộ hợp chất lên Firebase Realtime Database</p>
+                        </div>
+                        <span id="tch-room-badge" class="px-3 py-1 rounded-xl font-mono-code text-sm font-black bg-indigo-50 text-indigo-700 border border-indigo-200">H10M8K</span>
+                    </div>
+
+                    <div>
+                        <label for="tch-room-title" class="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Tên phòng / Chủ đề bài tập</label>
+                        <input type="text" id="tch-room-title" value="Phân loại Hợp chất Hữu cơ & Vô cơ" maxlength="80" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-600">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Số lượng hợp chất</span>
+                            <span id="tch-count-label" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-indigo-100 text-indigo-700">10 chất</span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-1.5 mb-2.5" id="tch-presets">
+                            <button type="button" data-preset="6" class="tch-preset-btn py-2 rounded-xl border border-slate-200 bg-slate-50 font-extrabold text-xs">6 chất</button>
+                            <button type="button" data-preset="10" class="tch-preset-btn py-2 rounded-xl border border-indigo-600 bg-indigo-600 text-white font-extrabold text-xs">10 chất</button>
+                            <button type="button" data-preset="15" class="tch-preset-btn py-2 rounded-xl border border-slate-200 bg-slate-50 font-extrabold text-xs">15 chất</button>
+                            <button type="button" data-preset="20" class="tch-preset-btn py-2 rounded-xl border border-slate-200 bg-slate-50 font-extrabold text-xs">20 chất</button>
+                            <button type="button" data-preset="25" class="tch-preset-btn py-2 rounded-xl border border-slate-200 bg-slate-50 font-extrabold text-xs">25 chất</button>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                            <span class="text-xs font-extrabold text-slate-400">4</span>
+                            <input type="range" id="tch-slider" min="4" max="25" value="10" class="flex-1 accent-indigo-600 cursor-pointer">
+                            <span class="text-xs font-extrabold text-slate-400">25</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">Mức độ kiến thức</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="tch-diffs">
+                            <button type="button" data-diff="easy" class="tch-diff-btn p-2.5 rounded-xl border-2 border-slate-200 text-left">
+                                <div class="font-extrabold text-slate-900 text-xs">Cơ Bản</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5">Chất quen thuộc, dễ nhận biết.</div>
+                            </button>
+                            <button type="button" data-diff="medium" class="tch-diff-btn p-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/70 text-left">
+                                <div class="font-extrabold text-slate-900 text-xs">Tiêu Chuẩn</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5">Hỗn hợp thông dụng &amp; ngoại lệ.</div>
+                            </button>
+                            <button type="button" data-diff="hard" class="tch-diff-btn p-2.5 rounded-xl border-2 border-slate-200 text-left">
+                                <div class="font-extrabold text-slate-900 text-xs">Thử Thách Bẫy</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5">Nhiều chất chứa C nhưng là vô cơ.</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pt-1 flex flex-wrap items-center gap-2.5">
+                        <button type="button" id="btn-tch-generate-room" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+                            Tạo &amp; Lưu Phòng Lên Firebase
+                        </button>
+                        <div class="flex items-center gap-1.5">
+                            <input type="text" id="tch-load-code-input" maxlength="10" placeholder="Mở mã phòng..." class="w-32 px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono-code font-bold uppercase focus:outline-none focus:border-indigo-600">
+                            <button type="button" id="btn-tch-load-code" class="px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200">Xem</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Cột phải (5 phần): Chia sẻ link & Mã QR cho học sinh -->
+                <section class="lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between gap-4">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                            <div>
+                                <h2 class="text-base font-extrabold text-slate-900">2. Chia Sẻ Cho Học Sinh</h2>
+                                <p class="text-xs text-slate-500">Học sinh mở link sẽ chỉ thấy form nhập Tên, Lớp &amp; Mã phòng</p>
+                            </div>
+                            <span id="tch-cloud-pill" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Đang kết nối RTDB
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3.5">
+                            <div id="tch-qr-box" class="w-24 h-24 bg-white p-1.5 rounded-xl border border-emerald-200 shrink-0 flex items-center justify-center"></div>
+                            <div class="space-y-1 min-w-0">
+                                <div class="text-[11px] font-bold text-emerald-800 uppercase">Mã phòng học sinh nhập:</div>
+                                <div id="tch-room-code-display" class="font-mono-code text-2xl font-black text-emerald-700 tracking-wider">H10M8K</div>
+                                <div id="tch-room-summary" class="text-xs text-emerald-800 font-medium">10 chất • Tiêu chuẩn</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Link chia sẻ (Tự khóa giao diện Học sinh)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="tch-share-link" readonly class="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono-code text-slate-700 focus:outline-none">
+                            <button type="button" id="btn-tch-copy-link" class="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 shrink-0">Sao Chép Link</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button id="btn-tch-copy-code" type="button" class="py-2 rounded-xl bg-slate-100 border text-xs font-bold">Sao chép mã</button>
+                            <button id="btn-tch-refresh" type="button" class="py-2 rounded-xl bg-slate-100 border text-xs font-bold">Tải kết quả</button>
+                        </div>
+                        <p id="tch-message" role="status" class="text-xs font-semibold text-slate-600"></p>
+                    </div>
+                </section>
+            </div>
+            <section class="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
+                <h2 class="text-base font-extrabold mb-2">3. Kết quả học sinh</h2>
+                <p class="text-xs text-slate-500 mb-3">Điểm được ghi khi học sinh nộp bài. Dữ liệu chỉ chia sẻ giữa các thiết bị khi đã kết nối Firebase.</p>
+                <div id="tch-results" class="overflow-x-auto text-sm">Chưa có kết quả.</div>
+            </section>
+            <section class="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+                <h2 class="text-base font-extrabold">4. Kết nối Firebase Realtime Database</h2>
+                <p class="text-xs text-slate-600">Đã cài sẵn địa chỉ Firebase hoa11c2. Có thể thay đổi <b>Realtime Database URL</b> nếu cần dùng dự án khác. Không nhập mật khẩu hay khoá quản trị. Cần thiết lập quy tắc truy cập và xác thực phù hợp trong Firebase trước khi sử dụng thực tế.</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="firebase-url" type="url" placeholder="https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+                    <button id="btn-save-firebase" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm">Lưu cấu hình</button>
+                </div>
+                <p id="firebase-status" class="text-xs font-medium text-amber-700">Chưa cấu hình: chỉ lưu phòng trên trình duyệt này.</p><p class="text-xs text-slate-600">Học sinh mở bản HTML này và nhập mã phòng sẽ tự sử dụng Firebase hoa11c2; link/QR mời cũng mang theo cấu hình kết nối. Không đặt khóa quản trị hay mật khẩu trong HTML.</p>
+            </section>
+        </main>
+    </div>
+    <div id="view-game" class="hidden min-h-screen bg-slate-100 p-4 sm:p-8">
+      <div class="max-w-5xl mx-auto space-y-4">
+        <div class="flex flex-wrap justify-between gap-2 items-center">
+          <div><h1 class="font-black text-xl">Phân loại hợp chất hóa học</h1><p id="game-info" class="text-sm text-slate-600"></p></div>
+          <button id="btn-game-exit" class="bg-white border rounded-xl px-4 py-2 font-bold text-sm">Thoát</button>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3"><span id="game-progress" class="font-bold text-indigo-700"></span><span id="game-clock" class="font-mono font-bold"></span><button id="btn-game-submit" class="bg-emerald-600 text-white font-bold rounded-xl px-4 py-2">Nộp bài</button></div>
+        <p class="text-sm text-slate-600">Chạm vào một chất, rồi chọn nhóm Hữu cơ hoặc Vô cơ. Có thể đổi lựa chọn trước khi nộp bài.</p>
+        <div id="game-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
+        <div class="grid grid-cols-2 gap-3"><button id="btn-group-organic" class="rounded-2xl bg-emerald-100 border-2 border-emerald-400 p-5 font-black text-emerald-800">HỮU CƠ</button><button id="btn-group-inorganic" class="rounded-2xl bg-blue-100 border-2 border-blue-400 p-5 font-black text-blue-800">VÔ CƠ</button></div>
+        <div id="game-message" role="status" class="text-sm font-semibold text-indigo-700"></div>
+      </div>
+    </div>
+    <div id="view-result" class="hidden min-h-screen bg-slate-100 flex-col items-center justify-center p-4">
+      <div class="bg-white max-w-lg w-full rounded-3xl p-8 shadow-xl text-center space-y-4"><h1 class="text-2xl font-black">Kết quả thi đấu</h1><p id="result-score" class="text-3xl text-indigo-700 font-black"></p><p id="result-detail" class="text-sm text-slate-600"></p><div id="result-answers" class="text-left text-sm max-h-72 overflow-auto"></div><button id="btn-result-home" class="rounded-xl bg-indigo-600 text-white px-5 py-3 font-bold">Về màn hình chính</button></div>
+    </div>
+<script>
+'use strict';
+// Firebase Realtime Database REST is optional. Without a configured URL, rooms are local to one browser.
+const $ = id => document.getElementById(id);
+const STORE = 'chem-classroom-rooms-v1', DBSTORE = 'chem-classroom-db-url-v1';
+// OPTIONAL: Set the same Firebase RTDB URL here when publishing this HTML for all students.
+// Example: 'https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app'
+// The URL is not a secret. Protect data using Firebase Security Rules and Authentication.
+const DEFAULT_FIREBASE_DATABASE_URL = 'https://hoa11c2-default-rtdb.asia-southeast1.firebasedatabase.app';
+const BANK = [
+ ['CH₄','CH4','organic','Metan','easy'],['C₂H₆','C2H6','organic','Etan','easy'],['C₂H₄','C2H4','organic','Eten','easy'],['C₂H₂','C2H2','organic','Etin','easy'],
+ ['C₂H₅OH','C2H5OH','organic','Etanol','easy'],['CH₃COOH','CH3COOH','organic','Axit axetic','easy'],['C₆H₁₂O₆','C6H12O6','organic','Glucozơ','easy'],['C₆H₆','C6H6','organic','Benzen','medium'],
+ ['CH₃OH','CH3OH','organic','Metanol','medium'],['CH₃CHO','CH3CHO','organic','Anđehit axetic','medium'],['CH₃COOCH₃','CH3COOCH3','organic','Metyl axetat','medium'],['C₃H₈','C3H8','organic','Propan','easy'],
+ ['C₆H₅OH','C6H5OH','organic','Phenol','hard'],['CH₃NH₂','CH3NH2','organic','Metylamin','hard'],['CH₃COONa','CH3COONa','organic','Natri axetat','hard'],['C₁₂H₂₂O₁₁','C12H22O11','organic','Saccarozơ','medium'],
+ ['H₂O','H2O','inorganic','Nước','easy'],['NaCl','NaCl','inorganic','Natri clorua','easy'],['HCl','HCl','inorganic','Axit clohiđric','easy'],['NaOH','NaOH','inorganic','Natri hiđroxit','easy'],
+ ['H₂SO₄','H2SO4','inorganic','Axit sunfuric','easy'],['CaO','CaO','inorganic','Canxi oxit','easy'],['NH₃','NH3','inorganic','Amoniac','medium'],['CaCO₃','CaCO3','inorganic','Canxi cacbonat','medium'],
+ ['CO₂','CO2','inorganic','Cacbon đioxit','medium'],['CO','CO','inorganic','Cacbon monoxit','medium'],['Na₂CO₃','Na2CO3','inorganic','Natri cacbonat','hard'],['NaHCO₃','NaHCO3','inorganic','Natri hiđrocacbonat','hard'],
+ ['KCN','KCN','inorganic','Kali xianua','hard'],['CaC₂','CaC2','inorganic','Canxi cacbua','hard'],['H₂CO₃','H2CO3','inorganic','Axit cacbonic','hard'],['SiO₂','SiO2','inorganic','Silic đioxit','medium'],
+ ['Fe₂O₃','Fe2O3','inorganic','Sắt(III) oxit','easy'],['KNO₃','KNO3','inorganic','Kali nitrat','medium'],['CHCl₃','CHCl3','organic','Clorofom','hard'],['CCl₄','CCl4','organic','Cacbon tetraclorua','hard'],
+ ['HCOOH','HCOOH','organic','Axit fomic','hard'],['HCOONa','HCOONa','organic','Natri fomat','hard'],['MgCO₃','MgCO3','inorganic','Magie cacbonat','hard'],['FeS','FeS','inorganic','Sắt(II) sunfua','medium']
+].map(([formula,id,category,name,difficulty])=>({formula,id,category,name,difficulty}));
+let diff='medium', count=10, roomCode='', game=null, timer=null, locked=Boolean(new URL(location.href).searchParams.get('room'));
+const codeFromLink=(new URL(location.href)).searchParams.get('room');
+function validDbUrl(value){
+  try {
+    const u = new URL(value);
+    return u.protocol === 'https:' && !u.username && !u.password &&
+      (/\.firebasedatabase\.app$/.test(u.hostname) || /\.firebaseio\.com$/.test(u.hostname)) &&
+      (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash;
+  } catch {return false}
+}
+const incomingDb = new URL(location.href).searchParams.get('db') || '';
+const defaultDb = DEFAULT_FIREBASE_DATABASE_URL.trim().replace(/\/$/,'');
+const savedDb = (localStorage.getItem(DBSTORE)||'').replace(/\/$/,'');
+// QR/link invitation wins; otherwise published default; otherwise saved setting on this device.
+let dbUrl = [incomingDb.replace(/\/$/,''),defaultDb,savedDb].find(validDbUrl) || '';
+if(dbUrl) localStorage.setItem(DBSTORE,dbUrl);
+function safeCode(v){return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10)}
+function rooms(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}}
+function saveLocal(code,value){let all=rooms();all[code]=value;localStorage.setItem(STORE,JSON.stringify(all))}
+function message(id,text,isError=false){$(id).textContent=text;$(id).classList.toggle('text-rose-600',isError)}
+function view(name){for(let id of ['view-student-gate','view-teacher-dashboard','view-game','view-result']){$(id).classList.add('hidden');$(id).classList.remove('flex')}$(name).classList.remove('hidden');if(name==='view-teacher-dashboard'||name==='view-result')$(name).classList.add('flex');window.scrollTo(0,0)}
+function updateDbStatus(){let enabled=Boolean(dbUrl);$('db-status-badge').textContent=enabled?'Firebase: đã cấu hình URL (chưa kiểm tra kết nối)':'Chế độ cục bộ • Chưa kết nối Firebase';$('tch-cloud-pill').textContent=enabled?'Firebase: URL đã cấu hình':'Chỉ lưu trên thiết bị này';$('firebase-status').textContent=enabled?'Đã lưu URL: '+dbUrl+' — dữ liệu chỉ đồng bộ nếu quyền truy cập Firebase cho phép.':'Chưa cấu hình: phòng chỉ hoạt động trên trình duyệt này.';$('firebase-url').value=dbUrl}
+async function requestDb(path,method='GET',data){if(!dbUrl)throw new Error('Chưa cấu hình Firebase Realtime Database URL.');let u=new URL(dbUrl+'/');if(!/^https:\/\//.test(dbUrl)||!u.hostname.endsWith('.firebasedatabase.app')&&!u.hostname.endsWith('.firebaseio.com'))throw new Error('URL không phải Firebase Realtime Database hợp lệ.');let response=await fetch(dbUrl+'/'+path+'.json',{method,headers:{'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data),cache:'no-store'});if(!response.ok)throw new Error('Firebase HTTP '+response.status+'; kiểm tra URL, quyền truy cập và quy tắc bảo mật.');return response.json()}
+async function getRoom(code){if(dbUrl)return await requestDb('rooms/'+code);return rooms()[code]||null}
+async function putRoom(code,room){if(dbUrl)await requestDb('rooms/'+code,'PUT',room);else saveLocal(code,room)}
+const randomCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[n%32]).join('');
+function selectChemicals(n,d){let pool=BANK.filter(x=>d==='easy'?x.difficulty==='easy':d==='medium'?x.difficulty!=='hard':true);let organic=pool.filter(x=>x.category==='organic').sort(()=>Math.random()-.5),inorganic=pool.filter(x=>x.category==='inorganic').sort(()=>Math.random()-.5);let result=[];while(result.length<n&&(organic.length||inorganic.length)){let a=result.length%2===0?organic:inorganic,b=result.length%2===0?inorganic:organic;result.push((a.length?a:b).shift())}return result.sort(()=>Math.random()-.5).map(x=>({id:x.id,formula:x.formula,category:x.category,name:x.name}))}
+function setCount(v){count=Number(v);$('tch-slider').value=count;$('tch-count-label').textContent=count+' chất';document.querySelectorAll('[data-preset]').forEach(b=>{let active=Number(b.dataset.preset)===count;b.classList.toggle('bg-indigo-600',active);b.classList.toggle('text-white',active);b.classList.toggle('bg-slate-50',!active)})}
+function setDiff(v){diff=v;document.querySelectorAll('[data-diff]').forEach(b=>{let active=b.dataset.diff===v;b.classList.toggle('border-indigo-600',active);b.classList.toggle('bg-indigo-50/70',active)})}
+function shareLink(code){
+  let url = new URL(location.href);
+  url.searchParams.set('room',code);
+  if(dbUrl) url.searchParams.set('db',dbUrl); else url.searchParams.delete('db');
+  url.hash='';
+  return url.toString();
+}
+function displayRoom(room){roomCode=room.code;$('tch-room-badge').textContent=room.code;$('tch-room-code-display').textContent=room.code;$('tch-room-title').value=room.title||'';setCount(room.count||10);setDiff(room.difficulty||'medium');$('tch-room-summary').textContent=room.compounds.length+' chất • '+({easy:'Cơ bản',medium:'Tiêu chuẩn',hard:'Thử thách'}[room.difficulty]||'Tiêu chuẩn');$('tch-share-link').value=shareLink(room.code);$('tch-qr-box').replaceChildren();let img=document.createElement('img');img.alt='QR liên kết phòng';img.width=88;img.height=88;img.src='https://api.qrserver.com/v1/create-qr-code/?size=176x176&data='+encodeURIComponent(shareLink(room.code));img.onerror=()=>{$('tch-qr-box').textContent='Không tải được mã QR'};$('tch-qr-box').append(img)}
+async function loadResults(){if(!roomCode){$('tch-results').textContent='Hãy tạo hoặc mở phòng trước.';return}try{let scores=dbUrl?await requestDb('hocsinh/'+roomCode):((rooms()[roomCode]||{}).scores||{});let entries=Object.values(scores||{}).sort((a,b)=>b.correct-a.correct||a.elapsed-b.elapsed);if(!entries.length){$('tch-results').textContent='Chưa có kết quả.';return}let table=document.createElement('table');table.className='min-w-full text-left border-collapse';let tr=document.createElement('tr');for(let label of ['Học sinh','Lớp','Điểm','Thời gian (giây)','Nộp lúc']){let th=document.createElement('th');th.className='border-b p-2';th.textContent=label;tr.append(th)}table.append(tr);for(let item of entries){tr=document.createElement('tr');for(let val of [item.name,item.className,item.correct+'/'+item.total,item.elapsed,new Date(item.submittedAt).toLocaleString('vi-VN')]){let td=document.createElement('td');td.className='border-b p-2';td.textContent=val;tr.append(td)}table.append(tr)}$('tch-results').replaceChildren(table)}catch(e){message('tch-message','Không tải được kết quả: '+e.message,true)}}
+$('btn-switch-teacher').onclick=()=>{if(locked){message('stu-gate-error','Liên kết dành cho học sinh không mở chức năng giáo viên.',true);$('stu-gate-error').classList.remove('hidden');return}view('view-teacher-dashboard')};
+$('btn-teacher-to-student').onclick=()=>view('view-student-gate');
+$('tch-slider').oninput=e=>setCount(e.target.value);
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>setCount(b.dataset.preset));
+document.querySelectorAll('[data-diff]').forEach(b=>b.onclick=()=>setDiff(b.dataset.diff));
+$('btn-save-firebase').onclick=()=>{let val=$('firebase-url').value.trim().replace(/\/$/,'');if(val&&!validDbUrl(val)){message('firebase-status','URL không hợp lệ; cần URL của Firebase Realtime Database.',true);return}dbUrl=val;localStorage.setItem(DBSTORE,dbUrl);updateDbStatus();if(roomCode){$('tch-share-link').value=shareLink(roomCode);const qr=$('tch-qr-box').querySelector('img');if(qr)qr.src='https://api.qrserver.com/v1/create-qr-code/?size=176x176&data='+encodeURIComponent(shareLink(roomCode))}message('tch-message','Đã lưu cấu hình. Link và QR phòng sẽ tự mang theo địa chỉ Firebase.')};
+$('btn-tch-generate-room').onclick=async()=>{let b=$('btn-tch-generate-room');b.disabled=true;message('tch-message','Đang tạo phòng...');try{let code=randomCode();let room={code,title:$('tch-room-title').value.trim()||'Phân loại hợp chất',count,difficulty:diff,compounds:selectChemicals(count,diff),createdAt:Date.now()};await putRoom(code,room);displayRoom(room);message('tch-message',dbUrl?'Đã lưu phòng lên Firebase.':'Đã tạo phòng cục bộ. Muốn học sinh dùng thiết bị khác, hãy cấu hình Firebase.');await loadResults()}catch(e){message('tch-message','Không tạo được phòng: '+e.message,true)}finally{b.disabled=false}};
+$('btn-tch-load-code').onclick=async()=>{let code=safeCode($('tch-load-code-input').value);if(!code){message('tch-message','Hãy nhập mã phòng.',true);return}try{let room=await getRoom(code);if(!room)throw new Error('Không tìm thấy phòng.');displayRoom(room);message('tch-message','Đã mở phòng '+code);await loadResults()}catch(e){message('tch-message',e.message,true)}};
+$('btn-tch-refresh').onclick=loadResults;
+$('btn-tch-copy-code').onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);message('tch-message','Đã sao chép mã '+roomCode)}catch{message('tch-message','Mã phòng: '+roomCode)}};
+$('btn-tch-copy-link').onclick=async()=>{try{await navigator.clipboard.writeText($('tch-share-link').value);message('tch-message','Đã sao chép liên kết')}catch{message('tch-message','Chọn và sao chép liên kết ở ô phía trên.')}};
+function startGame(room,name,className,teacherDemo=false){clearInterval(timer);game={room,name,className,teacherDemo,answers:{},selected:null,startedAt:Date.now(),finished:false};$('game-info').textContent=(teacherDemo?'CHƠI THỬ • ':'')+room.title+' • '+name+' • '+className+' • Phòng '+room.code;view('view-game');drawGame();timer=setInterval(()=>{if(game)$('game-clock').textContent='Thời gian: '+Math.floor((Date.now()-game.startedAt)/1000)+' giây'},1000)}
+function drawGame(){$('game-progress').textContent=Object.keys(game.answers).length+'/'+game.room.compounds.length+' chất đã phân loại';$('game-clock').textContent='Thời gian: '+Math.floor((Date.now()-game.startedAt)/1000)+' giây';$('game-cards').replaceChildren();for(let item of game.room.compounds){let btn=document.createElement('button');btn.type='button';btn.className='rounded-xl border-2 p-4 font-bold text-lg text-center bg-white hover:border-indigo-400 '+(game.selected===item.id?'border-indigo-600 ring-2 ring-indigo-200':game.answers[item.id]?'border-emerald-500':'border-slate-200');btn.textContent=item.formula+(game.answers[item.id]?' ✓':'');btn.title=item.name;btn.onclick=()=>{game.selected=item.id;message('game-message','Đã chọn '+item.formula+'. Hãy chọn nhóm bên dưới.');drawGame()};$('game-cards').append(btn)}}
+function assign(cat){if(!game||!game.selected){message('game-message','Chọn một hợp chất trước.',true);return}game.answers[game.selected]=cat;game.selected=null;message('game-message','Đã ghi nhận phân loại.');drawGame()}
+$('btn-group-organic').onclick=()=>assign('organic');$('btn-group-inorganic').onclick=()=>assign('inorganic');
+$('form-student-enter').onsubmit=async e=>{e.preventDefault();let name=$('stu-input-name').value.trim(),className=$('stu-input-class').value.trim(),code=safeCode($('stu-input-room').value);if(!name||!className||!code)return;if(!dbUrl && !rooms()[code]){$('stu-gate-error').classList.remove('hidden');message('stu-gate-error','Máy này chưa biết địa chỉ Firebase. Hãy mở link/QR mời từ giáo viên (có cấu hình Firebase), hoặc sử dụng bản HTML đã khai báo DEFAULT_FIREBASE_DATABASE_URL.',true);return}let btn=$('btn-stu-start');btn.disabled=true;message('stu-gate-error','Đang tìm phòng...');$('stu-gate-error').classList.remove('hidden');try{let room=await getRoom(code);if(!room||!Array.isArray(room.compounds)||!room.compounds.length)throw new Error('Không tìm thấy phòng hợp lệ. Kiểm tra mã phòng và kết nối Firebase.');$('stu-gate-error').classList.add('hidden');startGame(room,name,className)}catch(err){message('stu-gate-error',err.message,true)}finally{btn.disabled=false}};
+$('btn-teacher-test-play').onclick=async()=>{try{if(!roomCode)throw new Error('Hãy tạo hoặc mở phòng trước.');let room=await getRoom(roomCode);if(!room)throw new Error('Không tìm thấy phòng.');startGame(room,'Giáo viên','Chơi thử',true)}catch(e){message('tch-message',e.message,true)}};
+$('btn-game-exit').onclick=()=>{clearInterval(timer);game=null;view('view-student-gate')};
+$('btn-game-submit').onclick=async()=>{if(!game||game.finished)return;let missing=game.room.compounds.length-Object.keys(game.answers).length;if(missing&&!confirm('Còn '+missing+' chất chưa phân loại. Vẫn nộp bài?'))return;game.finished=true;clearInterval(timer);let correct=game.room.compounds.filter(item=>game.answers[item.id]===item.category).length,elapsed=Math.floor((Date.now()-game.startedAt)/1000);$('result-score').textContent=correct+' / '+game.room.compounds.length+' câu đúng';$('result-detail').textContent=game.name+' • '+game.className+' • '+elapsed+' giây'+(game.teacherDemo?' • Chơi thử, không lưu điểm':'');let list=document.createElement('div');for(let item of game.room.compounds){let line=document.createElement('div');line.className='py-1 border-b '+(game.answers[item.id]===item.category?'text-emerald-700':'text-rose-600');line.textContent=item.formula+' — '+(game.answers[item.id]===item.category?'Đúng':'Sai/chưa chọn')+' (đáp án: '+(item.category==='organic'?'Hữu cơ':'Vô cơ')+')';list.append(line)}$('result-answers').replaceChildren(list);view('view-result');if(!game.teacherDemo){let entry={name:game.name,className:game.className,correct,total:game.room.compounds.length,elapsed,submittedAt:Date.now()};try{if(dbUrl)await requestDb('hocsinh/'+game.room.code+'/'+randomCode()+Date.now(),'PUT',entry);else {let room=rooms()[game.room.code];if(room){room.scores ||= {};room.scores[randomCode()+Date.now()]=entry;saveLocal(game.room.code,room)}}$('result-detail').textContent+=' • Đã lưu kết quả'}catch(e){$('result-detail').textContent+=' • KHÔNG lưu được kết quả: '+e.message}}};
+$('btn-result-home').onclick=()=>{game=null;view('view-student-gate')};
+updateDbStatus();setCount(10);setDiff('medium');$('tch-share-link').value='Tạo phòng để có liên kết';$('tch-qr-box').textContent='Chưa tạo phòng';$('tch-room-code-display').textContent='------';$('tch-room-badge').textContent='------';
+if(codeFromLink){$('stu-input-room').value=safeCode(codeFromLink);$('stu-input-room').readOnly=true;$('stu-input-room').classList.add('bg-slate-100');$('stu-room-locked-badge').classList.remove('hidden');$('btn-switch-teacher').classList.add('hidden')}
+</script>
+</body>
+</html>
